@@ -1,0 +1,1101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="TripLog is an offline-first trip and odometer logger for tracking business mileage and fuel expenses.">
+<title>TripLog - Fuel Expense Tracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0b0f14;
+    --bg-glow: radial-gradient(1200px 500px at 10% -10%, rgba(52,211,153,0.10), transparent 60%),
+               radial-gradient(900px 500px at 100% 0%, rgba(56,189,248,0.07), transparent 60%);
+    --surface: #131a22;
+    --surface-2: #1a232d;
+    --surface-3: #212c38;
+    --border: #263341;
+    --border-strong: #35465a;
+    --accent: #34d399;
+    --accent-strong: #10b981;
+    --accent-soft: rgba(52,211,153,0.12);
+    --accent-line: rgba(52,211,153,0.32);
+    --text: #f1f5f9;
+    --text-2: #b4c0cd;
+    --text-3: #8a99aa;
+    --danger: #f87171;
+    --danger-soft: rgba(248,113,113,0.12);
+    --warn: #fbbf24;
+    --warn-soft: rgba(251,191,36,0.12);
+    --radius: 16px;
+    --radius-sm: 10px;
+    --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 12px 32px rgba(0,0,0,0.25);
+    --font: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { -webkit-text-size-adjust: 100%; }
+
+  body {
+    background: var(--bg);
+    background-image: var(--bg-glow);
+    background-repeat: no-repeat;
+    color: var(--text);
+    font-family: var(--font);
+    font-size: 16px;
+    line-height: 1.55;
+    min-height: 100vh;
+    padding-bottom: 72px;
+    -webkit-font-smoothing: antialiased;
+  }
+  button, input, select, textarea { font: inherit; color: inherit; }
+  svg { display: block; flex-shrink: 0; }
+  .num { font-variant-numeric: tabular-nums; }
+
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  /* Header */
+  header {
+    position: sticky; top: 0; z-index: 100;
+    background: rgba(11,15,20,0.8);
+    backdrop-filter: blur(18px) saturate(1.4);
+    -webkit-backdrop-filter: blur(18px) saturate(1.4);
+    border-bottom: 1px solid var(--border);
+  }
+  .header-inner {
+    max-width: 1160px; margin: 0 auto; padding: 0 24px; height: 68px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .brand { display: flex; align-items: center; gap: 12px; }
+  .brand-mark {
+    width: 38px; height: 38px; border-radius: 11px;
+    background: linear-gradient(135deg, #34d399, #0ea5e9);
+    display: grid; place-items: center; color: #04130d;
+    box-shadow: 0 6px 18px rgba(52,211,153,0.28);
+  }
+  .brand-name { font-size: 21px; font-weight: 800; letter-spacing: -0.02em; }
+  .brand-name span { color: var(--accent); }
+  .brand-tag { font-size: 13px; color: var(--text-3); margin-top: -2px; }
+
+  .sync-badge {
+    display: inline-flex; align-items: center; gap: 9px;
+    font-size: 14px; font-weight: 500; color: var(--text-2);
+    background: var(--surface); border: 1px solid var(--border);
+    padding: 8px 14px; border-radius: 999px; cursor: pointer;
+    transition: border-color .2s, color .2s, background .2s;
+  }
+  .sync-badge:hover { border-color: var(--accent-line); color: var(--text); background: var(--surface-2); }
+  .sync-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--text-3); }
+  .sync-dot.online { background: var(--accent); box-shadow: 0 0 0 4px var(--accent-soft); }
+  .sync-dot.syncing { background: var(--warn); box-shadow: 0 0 0 4px var(--warn-soft); animation: pulse .8s ease-in-out infinite; }
+  @keyframes pulse { 50% { opacity: .4; } }
+
+  /* Layout */
+  .container { max-width: 1160px; margin: 0 auto; padding: 32px 24px; }
+  .layout { display: grid; grid-template-columns: 420px 1fr; gap: 28px; align-items: start; }
+  .col-side { position: sticky; top: 92px; }
+
+  /* Stats */
+  .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 28px; }
+  .stat {
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 20px; display: flex; align-items: center; gap: 16px; box-shadow: var(--shadow);
+  }
+  .stat-icon {
+    width: 48px; height: 48px; border-radius: 13px; display: grid; place-items: center;
+    background: var(--accent-soft); color: var(--accent);
+  }
+  .stat-icon.warn { background: var(--warn-soft); color: var(--warn); }
+  .stat-icon.blue { background: rgba(56,189,248,0.12); color: #38bdf8; }
+  .stat-val { font-size: 30px; font-weight: 800; line-height: 1.1; letter-spacing: -0.02em; }
+  .stat-label { font-size: 14px; color: var(--text-3); font-weight: 500; }
+
+  /* Headings */
+  .section-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
+  .section-title { font-size: 19px; font-weight: 700; letter-spacing: -0.01em; }
+  .section-sub { font-size: 14px; color: var(--text-3); }
+  .block { margin-bottom: 36px; }
+
+  /* Card + form */
+  .card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 24px; box-shadow: var(--shadow);
+  }
+  .card-title { font-size: 19px; font-weight: 700; margin-bottom: 4px; display: flex; align-items: center; gap: 10px; }
+  .card-title .ico { color: var(--accent); }
+  .card-sub { font-size: 14px; color: var(--text-3); margin-bottom: 22px; }
+
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px; }
+  .form-row.single { grid-template-columns: 1fr; }
+  .form-row > *, .odo-grid > * { min-width: 0; }
+  .field label { display: block; font-size: 14px; font-weight: 600; color: var(--text-2); margin-bottom: 7px; }
+  .field input, .field select, .field textarea {
+    width: 100%; background: var(--surface-2); border: 1px solid var(--border);
+    border-radius: var(--radius-sm); padding: 12px 14px; font-size: 16px; color: var(--text);
+    outline: none; transition: border-color .15s, box-shadow .15s, background .15s;
+    -webkit-appearance: none; appearance: none;
+  }
+  .field input::placeholder, .field textarea::placeholder { color: var(--text-3); opacity: .8; }
+  .field input:hover, .field select:hover, .field textarea:hover { border-color: var(--border-strong); }
+  .field input:focus, .field select:focus, .field textarea:focus {
+    border-color: var(--accent); box-shadow: 0 0 0 4px var(--accent-soft); background: var(--surface-3);
+  }
+  .field select {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%238a99aa' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 14px center; padding-right: 40px;
+  }
+  .field select option { background: var(--surface-2); }
+  .field textarea { resize: vertical; min-height: 84px; }
+  input[type="date"] { color-scheme: dark; }
+
+  .odo-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px; }
+  .distance-box {
+    grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between;
+    background: var(--surface-2); border: 1px dashed var(--border-strong); border-radius: var(--radius-sm);
+    padding: 12px 16px;
+  }
+  .distance-box .lbl { font-size: 14px; font-weight: 600; color: var(--text-2); }
+  .distance-box .val { font-size: 24px; font-weight: 800; color: var(--text-3); letter-spacing: -0.02em; }
+  .distance-box .val.ready { color: var(--accent); }
+
+  /* Buttons */
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    padding: 12px 20px; border-radius: var(--radius-sm); border: 1px solid transparent;
+    font-size: 15px; font-weight: 600; cursor: pointer; transition: all .16s; white-space: nowrap;
+  }
+  .btn-primary { background: var(--accent); color: #04130d; box-shadow: 0 6px 18px rgba(52,211,153,0.25); }
+  .btn-primary:hover { background: #4ee2ab; transform: translateY(-1px); box-shadow: 0 10px 24px rgba(52,211,153,0.35); }
+  .btn-primary:active { transform: none; }
+  .btn-outline { background: var(--surface-2); color: var(--text); border-color: var(--border); }
+  .btn-outline:hover { border-color: var(--accent-line); background: var(--surface-3); }
+  .btn-danger { background: var(--danger-soft); color: var(--danger); border-color: rgba(248,113,113,0.28); }
+  .btn-danger:hover { background: rgba(248,113,113,0.2); }
+  .btn-sm { padding: 8px 12px; font-size: 14px; }
+  .btn-full { width: 100%; padding: 14px 20px; font-size: 16px; margin-top: 8px; }
+  .btn-row { display: flex; gap: 10px; }
+
+  /* Vehicles */
+  .plates-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px; }
+  .plate-card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 18px; cursor: pointer; text-align: left; width: 100%;
+    transition: border-color .18s, transform .18s, box-shadow .18s; position: relative;
+  }
+  .plate-card:hover { border-color: var(--border-strong); transform: translateY(-2px); }
+  .plate-card.active-plate { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+  .plate-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 14px; }
+  .plate-reg {
+    font-size: 14px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase;
+    background: #f5d547; color: #1a1a1a; padding: 3px 10px; border-radius: 6px;
+    border: 2px solid #1a1a1a; box-shadow: 0 0 0 1px #f5d547;
+    max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .plate-check { color: var(--accent); }
+  .plate-model { font-size: 16px; font-weight: 600; margin-bottom: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .plate-odo { display: flex; align-items: baseline; gap: 5px; }
+  .plate-odo-val { font-size: 26px; font-weight: 800; letter-spacing: -0.02em; color: var(--accent); }
+  .plate-odo-unit { font-size: 14px; color: var(--text-3); font-weight: 500; }
+  .plate-meta { display: flex; justify-content: space-between; margin-top: 8px; font-size: 13px; color: var(--text-3); }
+  .plate-add {
+    border-style: dashed; border-color: var(--border-strong); background: transparent;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
+    min-height: 150px; color: var(--text-3); font-weight: 600; font-size: 15px;
+  }
+  .plate-add:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+
+  /* Vehicle field */
+  .vehicle-wrap { position: relative; }
+  .vehicle-dropdown {
+    position: absolute; top: calc(100% + 6px); left: 0; right: 0; z-index: 50; display: none;
+    background: var(--surface-3); border: 1px solid var(--border-strong); border-radius: 12px;
+    overflow: hidden; box-shadow: 0 16px 40px rgba(0,0,0,0.5); max-height: 260px; overflow-y: auto;
+  }
+  .vehicle-dropdown.open { display: block; }
+  .vehicle-option {
+    padding: 11px 14px; font-size: 15px; cursor: pointer; display: flex; align-items: center; gap: 10px;
+  }
+  .vehicle-option:not(:last-child) { border-bottom: 1px solid var(--border); }
+  .vehicle-option:hover, .vehicle-option.focused { background: var(--accent-soft); color: var(--accent); }
+  .vehicle-option .v-new { margin-left: auto; font-size: 12px; font-weight: 700; color: var(--accent); text-transform: uppercase; letter-spacing: .05em; }
+  .vehicle-locked {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    background: var(--accent-soft); border: 1px solid var(--accent-line); border-radius: var(--radius-sm);
+    padding: 8px 8px 8px 14px; min-height: 48px; font-size: 15px; font-weight: 500; color: var(--accent);
+  }
+  .vehicle-locked .name { display: flex; align-items: center; gap: 9px; min-width: 0; }
+  .vehicle-locked .name span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .vehicle-locked button {
+    background: transparent; border: 1px solid transparent; cursor: pointer; color: var(--text-2);
+    font-size: 13px; font-weight: 600; padding: 5px 10px; border-radius: 8px; flex-shrink: 0;
+  }
+  .vehicle-locked button:hover { color: var(--text); border-color: var(--accent-line); }
+
+  /* Filters */
+  .filter-bar { display: flex; gap: 8px; flex-wrap: wrap; }
+  .filter-chip {
+    font-size: 14px; font-weight: 500; padding: 7px 14px; border-radius: 999px;
+    border: 1px solid var(--border); background: var(--surface); color: var(--text-2); cursor: pointer;
+    transition: all .15s;
+  }
+  .filter-chip:hover { border-color: var(--border-strong); color: var(--text); }
+  .filter-chip.active { border-color: var(--accent-line); color: var(--accent); background: var(--accent-soft); }
+
+  /* Trip list */
+  .trip-list { display: flex; flex-direction: column; gap: 12px; margin-top: 16px; }
+  .trip-item {
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 18px 20px 18px 24px; display: grid; grid-template-columns: 1fr auto; gap: 16px;
+    position: relative; overflow: hidden; transition: border-color .18s;
+  }
+  .trip-item::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: var(--border); }
+  .trip-item.unsynced::before { background: var(--warn); }
+  .trip-item.synced::before { background: var(--accent); }
+  .trip-item:hover { border-color: var(--border-strong); }
+  .trip-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 6px; font-size: 14px; color: var(--text-3); }
+  .cat-tag { font-weight: 600; color: var(--text-2); background: var(--surface-3); padding: 2px 10px; border-radius: 999px; font-size: 13px; }
+  .trip-purpose { font-size: 17px; font-weight: 700; margin-bottom: 10px; letter-spacing: -0.01em; }
+  .trip-meta { display: flex; gap: 8px 20px; flex-wrap: wrap; font-size: 14.5px; color: var(--text-2); }
+  .trip-meta-item { display: inline-flex; align-items: center; gap: 7px; }
+  .trip-meta-item svg { color: var(--text-3); }
+  .trip-notes { font-size: 14.5px; color: var(--text-3); margin-top: 10px; padding-left: 12px; border-left: 2px solid var(--border-strong); }
+  .trip-side { display: flex; flex-direction: column; align-items: flex-end; justify-content: space-between; gap: 12px; }
+  .trip-km { font-size: 30px; font-weight: 800; color: var(--accent); line-height: 1; letter-spacing: -0.02em; text-align: right; }
+  .trip-km small { display: block; font-size: 13px; font-weight: 500; color: var(--text-3); letter-spacing: 0; margin-top: 4px; }
+  .trip-actions { display: flex; align-items: center; gap: 8px; }
+  .sync-tag { font-size: 13px; font-weight: 600; padding: 4px 10px; border-radius: 999px; display: inline-flex; align-items: center; gap: 5px; }
+  .sync-tag.unsynced { background: var(--warn-soft); color: var(--warn); }
+  .sync-tag.synced { background: var(--accent-soft); color: var(--accent); }
+  .icon-btn {
+    width: 34px; height: 34px; display: grid; place-items: center; border-radius: 9px;
+    background: transparent; border: 1px solid var(--border); color: var(--text-3); cursor: pointer; transition: all .15s;
+  }
+  .icon-btn:hover { color: var(--danger); border-color: rgba(248,113,113,0.4); background: var(--danger-soft); }
+
+  .empty { text-align: center; padding: 56px 20px; background: var(--surface); border: 1px dashed var(--border-strong); border-radius: var(--radius); }
+  .empty svg { margin: 0 auto 14px; color: var(--text-3); }
+  .empty-text { font-size: 17px; font-weight: 600; }
+  .empty-sub { font-size: 14.5px; color: var(--text-3); margin-top: 4px; }
+
+  /* Toast */
+  #toast {
+    position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%) translateY(100px);
+    background: var(--surface-3); border: 1px solid var(--border-strong); padding: 13px 22px;
+    border-radius: 999px; font-size: 15px; font-weight: 500; z-index: 999;
+    transition: transform .3s cubic-bezier(.34,1.56,.64,1); white-space: nowrap; box-shadow: 0 16px 40px rgba(0,0,0,0.5);
+    max-width: calc(100vw - 32px); overflow: hidden; text-overflow: ellipsis;
+  }
+  #toast.show { transform: translateX(-50%) translateY(0); }
+  #toast.success { border-color: var(--accent-line); color: var(--accent); }
+  #toast.error { border-color: rgba(248,113,113,0.4); color: var(--danger); }
+
+  /* Modal */
+  .modal-overlay {
+    position: fixed; inset: 0; z-index: 200; background: rgba(4,8,12,0.72);
+    backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+    display: flex; align-items: center; justify-content: center; padding: 20px;
+    opacity: 0; pointer-events: none; transition: opacity .2s;
+  }
+  .modal-overlay.open { opacity: 1; pointer-events: all; }
+  .modal {
+    background: var(--surface); border: 1px solid var(--border-strong); border-radius: 20px;
+    padding: 28px; width: 100%; max-width: 480px; box-shadow: 0 30px 80px rgba(0,0,0,0.6);
+    transform: scale(.96) translateY(8px); transition: transform .25s cubic-bezier(.34,1.56,.64,1);
+  }
+  .modal-overlay.open .modal { transform: none; }
+  .modal h3 { font-size: 21px; font-weight: 700; margin-bottom: 18px; letter-spacing: -0.01em; }
+  .modal p { color: var(--text-2); margin-bottom: 20px; }
+  .summary-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 20px; }
+  .summary-tile { background: var(--surface-2); border: 1px solid var(--border); border-radius: 12px; padding: 14px; }
+  .summary-tile .v { font-size: 22px; font-weight: 800; letter-spacing: -0.02em; }
+  .summary-tile .l { font-size: 13px; color: var(--text-3); }
+  .summary-h { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--text-3); margin: 18px 0 10px; }
+  .bar-row { margin-bottom: 12px; }
+  .bar-label { display: flex; justify-content: space-between; font-size: 14.5px; margin-bottom: 5px; color: var(--text-2); }
+  .bar-label b { color: var(--text); font-weight: 600; }
+  .bar { height: 8px; background: var(--surface-3); border-radius: 99px; overflow: hidden; }
+  .bar > i { display: block; height: 100%; background: linear-gradient(90deg, #34d399, #38bdf8); border-radius: 99px; }
+  .range { font-size: 14.5px; color: var(--text-2); }
+  .modal .btn-row { margin-top: 24px; }
+
+  ::-webkit-scrollbar { width: 8px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 99px; }
+
+  @media (max-width: 960px) {
+    .layout { grid-template-columns: 1fr; }
+    .col-side { position: static; }
+  }
+  @media (max-width: 600px) {
+    .container { padding: 20px 16px; }
+    .header-inner { padding: 0 16px; height: 62px; }
+    .brand-tag { display: none; }
+    .stats { gap: 10px; }
+    .stat { flex-direction: column; align-items: flex-start; gap: 10px; padding: 14px; }
+    .stat-icon { width: 38px; height: 38px; border-radius: 10px; }
+    .stat-icon svg { width: 20px; height: 20px; }
+    .stat-val { font-size: 24px; }
+    .stat-label { font-size: 13px; }
+    .card { padding: 18px; }
+    .form-row { grid-template-columns: 1fr; }
+    .trip-item { grid-template-columns: 1fr; }
+    .trip-side { flex-direction: row-reverse; align-items: center; }
+    .trip-km, .trip-km small { text-align: left; }
+    .summary-grid { grid-template-columns: 1fr; }
+  }
+  @media print { header, .col-side, .filter-bar, #toast { display: none; } }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-inner">
+    <div class="brand">
+      <div class="brand-mark" aria-hidden="true">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="18" r="2.5"/><circle cx="18" cy="6" r="2.5"/><path d="M8.5 18H15a3.5 3.5 0 0 0 0-7H9a3.5 3.5 0 0 1 0-7h6.5"/></svg>
+      </div>
+      <div>
+        <div class="brand-name">Trip<span>Log</span></div>
+        <div class="brand-tag">Fuel expense tracker</div>
+      </div>
+    </div>
+    <button class="sync-badge" id="syncBadge" type="button" aria-label="Sync trips">
+      <span class="sync-dot" id="syncDot"></span>
+      <span id="syncLabel">Offline</span>
+    </button>
+  </div>
+</header>
+
+<main class="container">
+
+  <section class="stats" aria-label="Overview">
+    <div class="stat">
+      <div class="stat-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17h2l1.5-5h11L19 17h2"/><path d="M7 12l1-4h8l1 4"/><circle cx="7.5" cy="17.5" r="1.5"/><circle cx="16.5" cy="17.5" r="1.5"/></svg></div>
+      <div><div class="stat-val num" id="statTrips">0</div><div class="stat-label">Trips logged</div></div>
+    </div>
+    <div class="stat">
+      <div class="stat-icon blue"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21a9 9 0 1 1 9-9"/><path d="M12 12l4-4"/><path d="M21 21l-4-4"/></svg></div>
+      <div><div class="stat-val num" id="statKm">0</div><div class="stat-label">Total km</div></div>
+    </div>
+    <div class="stat">
+      <div class="stat-icon warn"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></div>
+      <div><div class="stat-val num" id="statUnsynced">0</div><div class="stat-label">Awaiting sync</div></div>
+    </div>
+  </section>
+
+  <div class="layout">
+
+    <aside class="col-side">
+      <div class="card" id="tripForm">
+        <div class="card-title">
+          <svg class="ico" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg>
+          Log a trip
+        </div>
+        <div class="card-sub">Odometer readings are used to work out distance.</div>
+
+        <div class="form-row single">
+          <div class="field">
+            <label for="tripVehicle">Vehicle</label>
+            <div class="vehicle-wrap" id="vehicleWrap"></div>
+          </div>
+        </div>
+        <div class="form-row single">
+          <div class="field">
+            <label for="tripDate">Date</label>
+            <input type="date" id="tripDate">
+          </div>
+        </div>
+
+        <div class="odo-grid">
+          <div class="field">
+            <label for="tripOdoStart">Start odometer (km)</label>
+            <input type="number" inputmode="numeric" id="tripOdoStart" placeholder="0">
+          </div>
+          <div class="field">
+            <label for="tripOdoEnd">End odometer (km)</label>
+            <input type="number" inputmode="numeric" id="tripOdoEnd" placeholder="0">
+          </div>
+          <div class="distance-box">
+            <span class="lbl">Distance</span>
+            <span class="val num" id="distDisplay">- km</span>
+          </div>
+        </div>
+
+        <div class="form-row single">
+          <div class="field">
+            <label for="tripPurpose">Trip purpose</label>
+            <input type="text" id="tripPurpose" placeholder="e.g. Client visit - ABC Corp">
+          </div>
+        </div>
+        <div class="form-row single">
+          <div class="field">
+            <label for="tripCategory">Category</label>
+            <select id="tripCategory">
+              <option value="client_visit">Client Visit</option>
+              <option value="site_inspection">Site Inspection</option>
+              <option value="delivery">Delivery / Collection</option>
+              <option value="meeting">Meeting</option>
+              <option value="training">Training</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-row single">
+          <div class="field">
+            <label for="tripNotes">Notes (optional)</label>
+            <textarea id="tripNotes" placeholder="Any additional details..."></textarea>
+          </div>
+        </div>
+
+        <button class="btn btn-primary btn-full" type="button" id="saveTripBtn">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+          Save trip
+        </button>
+      </div>
+    </aside>
+
+    <div class="col-main">
+
+      <section class="block">
+        <div class="section-head">
+          <div>
+            <h2 class="section-title">My vehicles</h2>
+            <div class="section-sub">Select a vehicle to pre-fill its last odometer reading.</div>
+          </div>
+        </div>
+        <div class="plates-grid" id="platesGrid"></div>
+      </section>
+
+      <section class="block">
+        <div class="section-head">
+          <div>
+            <h2 class="section-title">Trip history</h2>
+            <div class="section-sub" id="historyCount"></div>
+          </div>
+          <div class="btn-row">
+            <button class="btn btn-outline btn-sm" type="button" id="summaryBtn">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>
+              Summary
+            </button>
+            <button class="btn btn-outline btn-sm" type="button" id="csvBtn">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg>
+              CSV
+            </button>
+            <button class="btn btn-outline btn-sm" type="button" id="printBtn">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9V3h12v6M6 18H4a1 1 0 0 1-1-1v-6a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v6a1 1 0 0 1-1 1h-2"/><rect x="6" y="14" width="12" height="7" rx="1"/></svg>
+              Print
+            </button>
+          </div>
+        </div>
+
+        <div class="filter-bar" id="filterBar">
+          <button class="filter-chip active" type="button" data-filter="all">All</button>
+          <button class="filter-chip" type="button" data-filter="unsynced">Unsynced</button>
+          <button class="filter-chip" type="button" data-filter="synced">Synced</button>
+          <button class="filter-chip" type="button" data-filter="client_visit">Client visit</button>
+          <button class="filter-chip" type="button" data-filter="site_inspection">Site</button>
+          <button class="filter-chip" type="button" data-filter="delivery">Delivery</button>
+        </div>
+
+        <div class="trip-list" id="tripList"></div>
+      </section>
+
+    </div>
+  </div>
+</main>
+
+<div class="modal-overlay" id="summaryModal" role="dialog" aria-modal="true" aria-labelledby="summaryTitle">
+  <div class="modal">
+    <h3 id="summaryTitle">Trip summary</h3>
+    <div id="summaryContent"></div>
+    <div class="btn-row">
+      <button class="btn btn-primary" type="button" id="summaryPrintBtn">Print report</button>
+      <button class="btn btn-outline" type="button" data-close="summaryModal">Close</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="deleteModal" role="dialog" aria-modal="true" aria-labelledby="deleteTitle">
+  <div class="modal">
+    <h3 id="deleteTitle">Delete this trip?</h3>
+    <p>This action cannot be undone.</p>
+    <div class="btn-row">
+      <button class="btn btn-danger" type="button" id="confirmDeleteBtn">Delete trip</button>
+      <button class="btn btn-outline" type="button" data-close="deleteModal">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast" role="status" aria-live="polite"></div>
+
+<script>
+// Storage (falls back to memory when localStorage is blocked, e.g. some private modes)
+const store = (() => {
+  const mem = {};
+  let ls = null;
+  try { ls = window.localStorage; ls.getItem('triplog_probe'); } catch { ls = null; }
+  return {
+    get: k => (ls ? ls.getItem(k) : (k in mem ? mem[k] : null)),
+    set: (k, v) => { if (ls) { try { ls.setItem(k, v); return; } catch {} } mem[k] = v; },
+  };
+})();
+
+// State
+let trips = [];
+let currentFilter = 'all';
+let pendingDeleteId = null;
+let isOnline = false;
+let focusedIdx = -1;
+
+const STORAGE_KEY = 'triplog_trips';
+const VEHICLE_KEY = 'triplog_vehicles';
+const LAST_VEHICLE_KEY = 'triplog_last_vehicle';
+const VEHICLE_SEP = ' - ';
+
+const CAT_LABELS = {
+  client_visit: 'Client Visit',
+  site_inspection: 'Site Inspection',
+  delivery: 'Delivery',
+  meeting: 'Meeting',
+  training: 'Training',
+  other: 'Other',
+};
+
+const ICONS = {
+  car: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17h2l1.5-5h11L19 17h2"/><path d="M7 12l1-4h8l1 4"/><circle cx="7.5" cy="17.5" r="1.5"/><circle cx="16.5" cy="17.5" r="1.5"/></svg>',
+  pin: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg>',
+  trash: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14M10 11v6M14 11v6"/></svg>',
+  check: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>',
+  clock: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
+  plus: '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>',
+  clipboard: '<svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4h6v3H9zM9 12h6M9 16h4"/></svg>',
+};
+
+// Helpers
+const $ = id => document.getElementById(id);
+function esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+function formatDate(d) {
+  return new Date(d + 'T00:00:00').toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' });
+}
+function fmtNum(n) { return Number(n).toLocaleString('en-ZA').replace(/ /g, ' '); }
+
+let toastTimer;
+function toast(msg, type = '') {
+  const el = $('toast');
+  el.textContent = msg;
+  el.className = 'show ' + type;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { el.className = ''; }, 2800);
+}
+
+// Storage
+function getSavedVehicles() {
+  try { return JSON.parse(store.get(VEHICLE_KEY)) || []; } catch { return []; }
+}
+function saveVehicle(name) {
+  name = name.trim();
+  if (!name) return;
+  const vehicles = [name, ...getSavedVehicles().filter(v => v.toLowerCase() !== name.toLowerCase())].slice(0, 10);
+  store.set(VEHICLE_KEY, JSON.stringify(vehicles));
+  store.set(LAST_VEHICLE_KEY, name);
+}
+function save() { store.set(STORAGE_KEY, JSON.stringify(trips)); }
+
+// Seed data
+const SEED_VEHICLES = [
+  'Toyota Hilux - CA 123-456',
+  'Ford Ranger - GP 789-012',
+  'VW Transporter - WC 345-678',
+  'Isuzu D-Max - NP 901-234',
+];
+// [date, vehicle index, distance km, purpose, category, notes]
+const DEMO_TRIPS = [
+  ['2026-01-08', 0, 94,  'Client visit - Buildmax Pretoria', 'client_visit', 'Quarterly account review.'],
+  ['2026-01-13', 1, 187, 'Delivery - Bloemfontein branch', 'delivery', 'Pallets of fasteners, signed off on arrival.'],
+  ['2026-01-20', 2, 58,  'Training workshop - Sandton', 'training', ''],
+  ['2026-01-27', 0, 112, 'Site inspection - Midrand warehouse', 'site_inspection', 'Fire exit signage check.'],
+  ['2026-02-03', 3, 143, 'Delivery - Durban North client', 'delivery', 'Urgent order, same-day delivery.'],
+  ['2026-02-05', 0, 83,  'Site inspection - Roodepoort depot', 'site_inspection', 'Checked new racking installation.'],
+  ['2026-02-10', 1, 154, 'Delivery to Cape Town branch', 'delivery', 'Dropped off stock and picked up returns.'],
+  ['2026-02-14', 0, 66,  'Team meeting - Head office Sandton', 'meeting', ''],
+  ['2026-02-18', 2, 139, 'Training workshop - Johannesburg CBD', 'training', 'Full-day safety compliance course.'],
+  ['2026-02-21', 1, 116, 'Client visit - ProcureTech Centurion', 'client_visit', ''],
+  ['2026-03-04', 0, 76,  'Client visit - AfriSteel Boksburg', 'client_visit', 'Contract renewal discussion.'],
+  ['2026-03-11', 1, 121, 'Site inspection - Germiston factory', 'site_inspection', 'Pre-handover walkthrough with contractor.'],
+  ['2026-03-24', 3, 98,  'Client visit - Ridgeway Logistics Kempton Park', 'client_visit', ''],
+  ['2026-04-07', 2, 164, 'Delivery - Polokwane distribution centre', 'delivery', 'Long haul, left before sunrise.'],
+  ['2026-04-16', 0, 71,  'Team meeting - Head office Sandton', 'meeting', 'Q2 planning.'],
+  ['2026-05-05', 1, 133, 'Client visit - Highveld Mining Witbank', 'client_visit', 'Demo of the new tracking system.'],
+  ['2026-05-19', 3, 88,  'Site inspection - Springs depot', 'site_inspection', ''],
+  ['2026-06-02', 0, 105, 'Training workshop - Pretoria East', 'training', 'First aid refresher.'],
+  ['2026-06-23', 2, 148, 'Delivery - Rustenburg branch', 'delivery', ''],
+  ['2026-07-14', 1, 92,  'Meeting - Supplier negotiation Midrand', 'meeting', 'Agreed new pricing for H2.'],
+  ['2026-08-06', 0, 127, 'Client visit - ProcureTech Centurion', 'client_visit', ''],
+  ['2026-08-27', 3, 171, 'Delivery - Nelspruit client', 'delivery', 'Two drops on the route.'],
+  ['2026-09-09', 2, 79,  'Site inspection - Kempton Park warehouse', 'site_inspection', 'Pre-audit walkthrough.'],
+  ['2026-09-30', 1, 109, 'Client visit - AfriSteel Boksburg', 'client_visit', ''],
+  ['2026-10-06', 0, 84,  'Site inspection - Alberton depot', 'site_inspection', 'Checked loading bay repairs.'],
+  ['2026-10-12', 3, 126, 'Delivery - Vereeniging customer', 'delivery', ''],
+  ['2026-10-15', 1, 67,  'Team meeting - Head office Sandton', 'meeting', 'Year-end budget review.'],
+  ['2026-10-16', 0, 142, 'Client visit - Buildmax Pretoria', 'client_visit', 'Signed the annual supply agreement.'],
+];
+const SEED_START_ODO = [44100, 60800, 30200, 18300];
+const SEED_SYNC_CUTOFF = '2026-10-01'; // trips on or after this date show as pending
+
+function buildSeedTrips() {
+  const odo = [...SEED_START_ODO];
+  return DEMO_TRIPS
+    .slice().sort((a, b) => a[0].localeCompare(b[0]))
+    .map(([date, v, dist, purpose, category, notes], i) => {
+      const odoStart = odo[v];
+      odo[v] += dist;
+      return {
+        id: 's' + (i + 1), date, vehicle: SEED_VEHICLES[v],
+        odoStart, odoEnd: odo[v], distance: dist,
+        purpose, category, notes,
+        synced: date < SEED_SYNC_CUTOFF,
+        createdAt: date + 'T08:00:00Z',
+      };
+    })
+    .reverse(); // newest first, matching how new trips are added
+}
+
+function seedIfEmpty() {
+  if (!store.get(STORAGE_KEY)) store.set(STORAGE_KEY, JSON.stringify(buildSeedTrips()));
+  if (!store.get(VEHICLE_KEY)) {
+    store.set(VEHICLE_KEY, JSON.stringify(SEED_VEHICLES));
+    store.set(LAST_VEHICLE_KEY, SEED_VEHICLES[0]);
+  }
+}
+
+// Vehicle field
+function renderVehicleField(lockedName) {
+  const wrap = $('vehicleWrap');
+  if (lockedName) {
+    wrap.innerHTML = `
+      <div class="vehicle-locked">
+        <div class="name">${ICONS.car}<span>${esc(lockedName)}</span></div>
+        <button type="button" data-action="unlock-vehicle" title="Change vehicle">Change</button>
+      </div>
+      <input type="hidden" id="tripVehicle" value="${esc(lockedName)}" data-locked="true">`;
+  } else {
+    wrap.innerHTML = `
+      <input type="text" id="tripVehicle" placeholder="e.g. Toyota Hilux - CA 123-456" autocomplete="off" role="combobox" aria-expanded="false">
+      <div class="vehicle-dropdown" id="vehicleDropdown"></div>`;
+  }
+}
+
+function getMatches(query) {
+  const vehicles = getSavedVehicles();
+  if (!query) return vehicles;
+  return vehicles.filter(v => v.toLowerCase().includes(query.toLowerCase()));
+}
+
+function renderDropdown(query) {
+  const dd = $('vehicleDropdown');
+  if (!dd) return;
+  const matches = getMatches(query);
+  const trimmed = query.trim();
+  const exact = matches.some(v => v.toLowerCase() === trimmed.toLowerCase());
+
+  let items = matches.map(v => `
+    <div class="vehicle-option" data-pick="${esc(v)}">${ICONS.car}<span>${esc(v)}</span></div>`).join('');
+  if (trimmed && !exact) {
+    items += `<div class="vehicle-option" data-pick="${esc(trimmed)}">${ICONS.plus.replace('width="26" height="26"', 'width="18" height="18"')}<span>${esc(trimmed)}</span><span class="v-new">Save new</span></div>`;
+  }
+  if (!items) { dd.classList.remove('open'); return; }
+  dd.innerHTML = items;
+  dd.classList.add('open');
+}
+
+function closeDropdown() {
+  const dd = $('vehicleDropdown');
+  if (dd) dd.classList.remove('open');
+  focusedIdx = -1;
+}
+
+function selectVehicle(name) {
+  saveVehicle(name);
+  renderVehicleField(name);
+  const lastOdo = getLastOdoForVehicle(name);
+  if (lastOdo != null) { $('tripOdoStart').value = lastOdo; calcDistance(); }
+  renderPlates();
+}
+
+function unlockVehicle() {
+  renderVehicleField(null);
+  $('tripVehicle').focus();
+  renderDropdown('');
+}
+
+// Online status
+function setOnline(status) {
+  isOnline = status;
+  $('syncDot').className = 'sync-dot ' + (status ? 'online' : '');
+  $('syncLabel').textContent = status ? 'Online' : 'Offline';
+}
+
+function simulateSync() {
+  if (!isOnline) { toast('You are offline. Trips are saved locally.', 'error'); return; }
+  const unsynced = trips.filter(t => !t.synced);
+  if (!unsynced.length) { toast('All trips are already synced', 'success'); return; }
+  $('syncDot').className = 'sync-dot syncing';
+  $('syncLabel').textContent = 'Syncing...';
+  setTimeout(() => {
+    trips = trips.map(t => ({ ...t, synced: true }));
+    save(); renderAll();
+    $('syncDot').className = 'sync-dot online';
+    $('syncLabel').textContent = 'Synced';
+    toast(`${unsynced.length} trip${unsynced.length !== 1 ? 's' : ''} synced`, 'success');
+    setTimeout(() => { if (isOnline) $('syncLabel').textContent = 'Online'; }, 3000);
+  }, 1800);
+}
+
+// Form
+function calcDistance() {
+  const s = parseFloat($('tripOdoStart').value);
+  const e = parseFloat($('tripOdoEnd').value);
+  const el = $('distDisplay');
+  if (!isNaN(s) && !isNaN(e) && e > s) {
+    el.textContent = fmtNum(+(e - s).toFixed(1)) + ' km';
+    el.classList.add('ready');
+  } else {
+    el.textContent = '- km';
+    el.classList.remove('ready');
+  }
+}
+
+function setDate() {
+  const d = new Date();
+  const local = new Date(d.getTime() - d.getTimezoneOffset() * 60000);
+  $('tripDate').value = local.toISOString().split('T')[0];
+}
+
+function addTrip() {
+  const date = $('tripDate').value;
+  const vehicle = ($('tripVehicle').value || '').trim();
+  const odoStart = parseFloat($('tripOdoStart').value);
+  const odoEnd = parseFloat($('tripOdoEnd').value);
+  const purpose = $('tripPurpose').value.trim();
+  const category = $('tripCategory').value;
+  const notes = $('tripNotes').value.trim();
+
+  if (!date) return toast('Please select a date', 'error');
+  if (!vehicle) return toast('Please choose a vehicle', 'error');
+  if (!purpose) return toast('Please enter a trip purpose', 'error');
+  if (isNaN(odoStart) || isNaN(odoEnd)) return toast('Please enter odometer readings', 'error');
+  if (odoEnd <= odoStart) return toast('End odometer must be greater than start', 'error');
+
+  saveVehicle(vehicle);
+  trips.unshift({
+    id: Date.now().toString(),
+    date, vehicle, odoStart, odoEnd,
+    distance: +(odoEnd - odoStart).toFixed(1),
+    purpose, category, notes,
+    synced: false,
+    createdAt: new Date().toISOString(),
+  });
+  save();
+
+  $('tripOdoStart').value = odoEnd;
+  $('tripOdoEnd').value = '';
+  $('tripPurpose').value = '';
+  $('tripNotes').value = '';
+  calcDistance();
+  setDate();
+  renderVehicleField(vehicle);
+  renderAll();
+  toast('Trip saved', 'success');
+}
+
+// Vehicles
+function sortedVehicleTrips(name) {
+  return trips.filter(t => t.vehicle === name).sort((a, b) =>
+    b.date !== a.date ? b.date.localeCompare(a.date) : new Date(b.createdAt) - new Date(a.createdAt));
+}
+function getLastOdoForVehicle(name) {
+  const list = sortedVehicleTrips(name);
+  return list.length ? list[0].odoEnd : null;
+}
+
+function renderPlates() {
+  const current = ($('tripVehicle') || {}).value || store.get(LAST_VEHICLE_KEY) || '';
+  const cards = getSavedVehicles().map(v => {
+    const list = sortedVehicleTrips(v);
+    const lastOdo = list.length ? list[0].odoEnd : null;
+    const sepIdx = v.indexOf(VEHICLE_SEP);
+    const model = sepIdx > -1 ? v.slice(0, sepIdx) : v;
+    const plate = sepIdx > -1 ? v.slice(sepIdx + VEHICLE_SEP.length) : '';
+    const active = v === current;
+    return `
+    <button type="button" class="plate-card ${active ? 'active-plate' : ''}" data-plate="${esc(v)}">
+      <div class="plate-top">
+        <span class="plate-reg">${esc(plate || 'No plate')}</span>
+        ${active ? `<span class="plate-check">${ICONS.check}</span>` : ''}
+      </div>
+      <div class="plate-model">${esc(model)}</div>
+      <div class="plate-odo">
+        <span class="plate-odo-val num">${lastOdo != null ? fmtNum(lastOdo) : '-'}</span>
+        ${lastOdo != null ? '<span class="plate-odo-unit">km</span>' : ''}
+      </div>
+      <div class="plate-meta">
+        <span>${list.length} trip${list.length !== 1 ? 's' : ''}</span>
+        <span>${list.length ? 'Last: ' + formatDate(list[0].date) : 'No trips yet'}</span>
+      </div>
+    </button>`;
+  }).join('');
+
+  $('platesGrid').innerHTML = cards + `
+    <button type="button" class="plate-card plate-add" data-action="add-vehicle">
+      ${ICONS.plus}
+      <span>Add vehicle</span>
+    </button>`;
+}
+
+function selectPlateVehicle(name) {
+  selectVehicle(name);
+  const lastOdo = getLastOdoForVehicle(name);
+  if (lastOdo != null) toast(`Start odometer set to ${fmtNum(lastOdo)} km`, 'success');
+  if (window.innerWidth <= 960) $('tripForm').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// Trip list
+function getFiltered() {
+  if (currentFilter === 'all') return trips;
+  if (currentFilter === 'unsynced') return trips.filter(t => !t.synced);
+  if (currentFilter === 'synced') return trips.filter(t => t.synced);
+  return trips.filter(t => t.category === currentFilter);
+}
+
+function renderList() {
+  const filtered = getFiltered();
+  $('historyCount').textContent = `${filtered.length} of ${trips.length} trip${trips.length !== 1 ? 's' : ''}`;
+  if (!filtered.length) {
+    $('tripList').innerHTML = `<div class="empty">${ICONS.clipboard}<div class="empty-text">No trips found</div><div class="empty-sub">Try a different filter or log a new trip.</div></div>`;
+    return;
+  }
+  $('tripList').innerHTML = filtered.map(t => `
+    <article class="trip-item ${t.synced ? 'synced' : 'unsynced'}">
+      <div>
+        <div class="trip-head">
+          <span class="num">${formatDate(t.date)}</span>
+          <span class="cat-tag">${esc(CAT_LABELS[t.category] || t.category)}</span>
+        </div>
+        <div class="trip-purpose">${esc(t.purpose)}</div>
+        <div class="trip-meta">
+          ${t.vehicle ? `<span class="trip-meta-item">${ICONS.car}${esc(t.vehicle)}</span>` : ''}
+          <span class="trip-meta-item num">${ICONS.pin}${fmtNum(t.odoStart)} &rarr; ${fmtNum(t.odoEnd)} km</span>
+        </div>
+        ${t.notes ? `<div class="trip-notes">${esc(t.notes)}</div>` : ''}
+      </div>
+      <div class="trip-side">
+        <div class="trip-km num">${fmtNum(t.distance)}<small>km</small></div>
+        <div class="trip-actions">
+          <span class="sync-tag ${t.synced ? 'synced' : 'unsynced'}">${t.synced ? ICONS.check + ' Synced' : ICONS.clock + ' Pending'}</span>
+          <button type="button" class="icon-btn" data-delete="${esc(t.id)}" aria-label="Delete trip" title="Delete trip">${ICONS.trash}</button>
+        </div>
+      </div>
+    </article>`).join('');
+}
+
+function updateStats() {
+  $('statTrips').textContent = fmtNum(trips.length);
+  $('statKm').textContent = fmtNum(Math.round(trips.reduce((a, t) => a + t.distance, 0)));
+  $('statUnsynced').textContent = fmtNum(trips.filter(t => !t.synced).length);
+}
+
+function renderAll() { renderList(); renderPlates(); updateStats(); }
+
+// Delete
+function confirmDelete(id) {
+  pendingDeleteId = id;
+  $('deleteModal').classList.add('open');
+}
+
+// Export
+function csvCell(v) { return '"' + String(v ?? '').replace(/"/g, '""') + '"'; }
+
+function exportCSV() {
+  if (!trips.length) return toast('No trips to export', 'error');
+  const headers = ['Date','Vehicle','Purpose','Category','Odo Start','Odo End','Distance (km)','Notes','Synced'];
+  const rows = trips.map(t => [t.date, t.vehicle, t.purpose, CAT_LABELS[t.category], t.odoStart, t.odoEnd, t.distance, t.notes, t.synced ? 'Yes' : 'No'].map(csvCell));
+  const csv = [headers.map(csvCell), ...rows].map(r => r.join(',')).join('\n');
+  const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `triplog_${new Date().toISOString().split('T')[0]}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+  toast('CSV downloaded', 'success');
+}
+
+function exportPrint() {
+  if (!trips.length) return toast('No trips to print', 'error');
+  const total = trips.reduce((a, t) => a + t.distance, 0).toFixed(1);
+  const html = `<!DOCTYPE html>
+    <html><head><meta charset="UTF-8"><title>TripLog Report</title>
+    <style>
+      body{font-family:Inter,system-ui,sans-serif;padding:32px;color:#111;font-size:14px}
+      h1{font-size:24px;margin-bottom:4px}
+      .sub{color:#555;margin-bottom:24px;font-size:13px}
+      table{width:100%;border-collapse:collapse}
+      th{background:#f1f3f5;text-align:left;padding:9px 10px;font-size:12px;text-transform:uppercase;letter-spacing:.05em}
+      td{padding:9px 10px;border-bottom:1px solid #e5e7eb;vertical-align:top}
+      .total{font-weight:700;margin-top:18px;text-align:right;font-size:16px}
+      @media print{body{padding:12px}}
+    </style></head><body>
+    <h1>TripLog - Fuel Expense Report</h1>
+    <div class="sub">Generated ${new Date().toLocaleDateString('en-ZA', { dateStyle: 'long' })} &middot; ${trips.length} trip(s)</div>
+    <table>
+      <tr><th>Date</th><th>Purpose</th><th>Vehicle</th><th>Category</th><th>Start km</th><th>End km</th><th>Distance</th><th>Notes</th></tr>
+      ${trips.map(t => `<tr><td>${esc(t.date)}</td><td>${esc(t.purpose)}</td><td>${esc(t.vehicle || '-')}</td><td>${esc(CAT_LABELS[t.category])}</td><td>${t.odoStart}</td><td>${t.odoEnd}</td><td><b>${t.distance} km</b></td><td>${esc(t.notes || '-')}</td></tr>`).join('')}
+    </table>
+    <div class="total">Total distance: ${total} km</div>
+    <script>window.onload=function(){window.print();}<\/script>
+    </body></html>`;
+  const w = window.open('', '_blank');
+  if (!w) return toast('Pop-up blocked. Allow pop-ups to print.', 'error');
+  w.document.write(html);
+  w.document.close();
+}
+
+function openSummaryModal() {
+  if (!trips.length) return toast('No trips to summarise', 'error');
+  const total = trips.reduce((a, t) => a + t.distance, 0);
+  const unsynced = trips.filter(t => !t.synced).length;
+  const byCat = {};
+  trips.forEach(t => { byCat[t.category] = (byCat[t.category] || 0) + t.distance; });
+  const max = Math.max(...Object.values(byCat));
+  const bars = Object.entries(byCat).sort((a, b) => b[1] - a[1]).map(([k, v]) => `
+    <div class="bar-row">
+      <div class="bar-label"><span>${esc(CAT_LABELS[k])}</span><b class="num">${fmtNum(+v.toFixed(1))} km</b></div>
+      <div class="bar"><i style="width:${(v / max * 100).toFixed(1)}%"></i></div>
+    </div>`).join('');
+  const dates = trips.map(t => t.date).sort();
+  $('summaryContent').innerHTML = `
+    <div class="summary-grid">
+      <div class="summary-tile"><div class="v num">${trips.length}</div><div class="l">Trips</div></div>
+      <div class="summary-tile"><div class="v num">${fmtNum(+total.toFixed(1))}</div><div class="l">Total km</div></div>
+      <div class="summary-tile"><div class="v num" style="color:var(--warn)">${unsynced}</div><div class="l">Pending sync</div></div>
+    </div>
+    <div class="summary-h">Distance by category</div>
+    ${bars}
+    <div class="summary-h">Date range</div>
+    <div class="range num">${formatDate(dates[0])} &rarr; ${formatDate(dates[dates.length - 1])}</div>`;
+  $('summaryModal').classList.add('open');
+}
+
+function closeModal(id) { $(id).classList.remove('open'); }
+
+// Events
+function bindEvents() {
+  $('syncBadge').addEventListener('click', simulateSync);
+  $('saveTripBtn').addEventListener('click', addTrip);
+  $('csvBtn').addEventListener('click', exportCSV);
+  $('printBtn').addEventListener('click', exportPrint);
+  $('summaryBtn').addEventListener('click', openSummaryModal);
+  $('summaryPrintBtn').addEventListener('click', exportPrint);
+  $('tripOdoStart').addEventListener('input', calcDistance);
+  $('tripOdoEnd').addEventListener('input', calcDistance);
+
+  $('confirmDeleteBtn').addEventListener('click', () => {
+    trips = trips.filter(t => t.id !== pendingDeleteId);
+    save(); renderAll(); closeModal('deleteModal');
+    toast('Trip deleted', 'error');
+  });
+
+  $('filterBar').addEventListener('click', e => {
+    const chip = e.target.closest('[data-filter]');
+    if (!chip) return;
+    currentFilter = chip.dataset.filter;
+    document.querySelectorAll('.filter-chip').forEach(c => c.classList.toggle('active', c === chip));
+    renderList();
+  });
+
+  // Vehicle input (the field is re-rendered, so delegate from the wrapper)
+  const wrap = $('vehicleWrap');
+  wrap.addEventListener('input', e => {
+    if (e.target.id !== 'tripVehicle') return;
+    focusedIdx = -1;
+    renderDropdown(e.target.value);
+  });
+  wrap.addEventListener('focusin', e => {
+    if (e.target.id === 'tripVehicle' && e.target.type === 'text') renderDropdown(e.target.value);
+  });
+  wrap.addEventListener('keydown', e => {
+    if (e.target.id !== 'tripVehicle') return;
+    const dd = $('vehicleDropdown');
+    const options = dd ? dd.querySelectorAll('.vehicle-option') : [];
+    if (e.key === 'Escape') return closeDropdown();
+    if (!dd || !dd.classList.contains('open') || !options.length) return;
+    if (e.key === 'ArrowDown') { e.preventDefault(); focusedIdx = Math.min(focusedIdx + 1, options.length - 1); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); focusedIdx = Math.max(focusedIdx - 1, 0); }
+    else if (e.key === 'Enter' && focusedIdx >= 0) { e.preventDefault(); return selectVehicle(options[focusedIdx].dataset.pick); }
+    options.forEach((o, i) => o.classList.toggle('focused', i === focusedIdx));
+  });
+
+  document.addEventListener('mousedown', e => {
+    const opt = e.target.closest('[data-pick]');
+    if (opt) { e.preventDefault(); selectVehicle(opt.dataset.pick); }
+  });
+
+  document.addEventListener('click', e => {
+    if (!e.target.closest('#vehicleWrap')) closeDropdown();
+
+    const plate = e.target.closest('[data-plate]');
+    if (plate) return selectPlateVehicle(plate.dataset.plate);
+
+    const del = e.target.closest('[data-delete]');
+    if (del) return confirmDelete(del.dataset.delete);
+
+    const close = e.target.closest('[data-close]');
+    if (close) return closeModal(close.dataset.close);
+
+    const action = e.target.closest('[data-action]');
+    if (action) {
+      if (action.dataset.action === 'unlock-vehicle' || action.dataset.action === 'add-vehicle') {
+        unlockVehicle();
+        if (action.dataset.action === 'add-vehicle' && window.innerWidth <= 960) $('tripForm').scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }
+  });
+
+  document.querySelectorAll('.modal-overlay').forEach(o =>
+    o.addEventListener('click', e => { if (e.target === o) o.classList.remove('open'); }));
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') document.querySelectorAll('.modal-overlay.open').forEach(o => o.classList.remove('open'));
+  });
+
+  window.addEventListener('online', () => setOnline(true));
+  window.addEventListener('offline', () => setOnline(false));
+}
+
+// Init
+function init() {
+  seedIfEmpty();
+  try { trips = JSON.parse(store.get(STORAGE_KEY)) || []; } catch { trips = []; }
+  setDate();
+  bindEvents();
+
+  const last = store.get(LAST_VEHICLE_KEY);
+  renderVehicleField(last || null);
+  if (last) {
+    const odo = getLastOdoForVehicle(last);
+    if (odo != null) $('tripOdoStart').value = odo;
+  }
+
+  renderAll();
+  setOnline(navigator.onLine);
+
+  // Deep link used for README screenshots: index.html#summary
+  if (location.hash === '#summary') openSummaryModal();
+}
+
+init();
+</script>
+</body>
+</html>
