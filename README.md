@@ -2,6 +2,8 @@
 
 An offline-first trip and odometer logger for tracking business mileage and fuel expenses. It is a single HTML file with no build step, no dependencies and no backend. Your data stays in your browser.
 
+**[Live demo](https://mrpettitt.github.io/TripLog-WebApp/)**
+
 ![TripLog desktop view](docs/screenshots/desktop.png)
 
 ## Features
@@ -29,7 +31,7 @@ An offline-first trip and odometer logger for tracking business mileage and fuel
 
 ## Getting started
 
-No installation is needed.
+No installation is needed. You can also try it straight away in the [live demo](https://mrpettitt.github.io/TripLog-WebApp/).
 
 1. Clone the repository:
    ```bash
